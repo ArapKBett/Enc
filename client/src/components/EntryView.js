@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Typography, Button, Container } from '@material-ui/core';
+import { Typography, Button, Container } from '@mui/material';
 import axios from 'axios';
 import socket from '../socket';
 import EntryForm from './EntryForm';
