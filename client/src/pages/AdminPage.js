@@ -1,5 +1,5 @@
 import React from 'react';
-import { Container, Typography, Button } from '@material-ui/core';
+import { Container, Typography, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import CategoryForm from '../components/CategoryForm';
 import UserManagement from '../components/UserManagement';
