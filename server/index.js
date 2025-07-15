@@ -3,8 +3,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
-const bcrypt = require('bcryptjs'); // Added for password hashing
-const User = require('./models/User'); // Adjust path if needed
+const bcrypt = require('bcryptjs');
+const User = require('./models/User'); // Matches case in models/User.js
 const authRoutes = require('./routes/auth');
 const entryRoutes = require('./routes/entries');
 const categoryRoutes = require('./routes/categories');
@@ -13,10 +13,10 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: 'https://movency.onrender.com' }, // Updated to match frontend
+  cors: { origin: 'https://movency.onrender.com' },
 });
 
-app.use(cors({ origin: 'https://movency.onrender.com' })); // Updated CORS
+app.use(cors({ origin: 'https://movency.onrender.com' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -25,19 +25,14 @@ mongoose.connect(process.env.MONGO_URI, {
   useUnifiedTopology: true,
 }).then(() => {
   console.log('MongoDB connected');
-  // Create admin user on startup if not exists
+  // Reset admin user on startup
   const setupAdmin = async () => {
     try {
-      const exists = await User.findOne({ username: 'admin1' });
-      if (!exists) {
-        const hash = await bcrypt.hash('Admin123!', 10);
-        await User.create({ username: 'admin1', password: hash, role: 'admin' });
-        console.log('Admin user created: admin1 with password Admin123!');
-      } else {
-        console.log('Admin user already exists');
-      }
+      await User.deleteOne({ username: 'admin1' }); // Remove existing user to avoid duplicates
+      await User.create({ username: 'admin1', password: 'Admin123!', role: 'admin' });
+      console.log('Admin user reset: admin1 with password Admin123!');
     } catch (err) {
-      console.error('Error creating admin user:', err);
+      console.error('Error resetting admin user:', err);
     }
   };
   setupAdmin();
