@@ -1,68 +1,124 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, Button, MenuItem, Select, InputLabel, FormControl } from '@mui/material';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Typography, Button, Container } from '@mui/material'; // Changed to @mui/material
 import axios from 'axios';
+import socket from '../socket';
+import EntryForm from './EntryForm';
 
-const EntryForm = ({ onSubmit }) => {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState('');
-  const [categories, setCategories] = useState([]);
+const EntryView = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [entry, setEntry] = useState(null);
+  const [editMode, setEditMode] = useState(false);
   const user = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchEntry = async () => {
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/categories`, {
-          headers: { Authorization: `Bearer ${user.token}` }
+        const res = await axios.get(`${process.env.REACT_APP_API_URL}/entries/${id}`, {
+          headers: { Authorization: `Bearer ${user.token}` },
         });
-        setCategories(response.data);
-      } catch (error) {
-        console.error('Error fetching categories:', error);
+        setEntry(res.data);
+      } catch (err) {
+        alert('Failed to load entry');
       }
     };
-    fetchCategories();
-  }, []);
+    fetchEntry();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+    socket.on('entryUpdate', (updatedEntry) => {
+      if (updatedEntry._id === id) {
+        if (updatedEntry.deleted) {
+          navigate('/');
+        } else {
+          setEntry(updatedEntry);
+        }
+      }
+    });
+
+    return () => socket.off('entryUpdate');
+  }, [id, navigate, user.token]);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
     try {
-      await axios.post(`${process.env.REACT_APP_API_URL}/entries`, { title, content, category }, {
-        headers: { Authorization: `Bearer ${user.token}` }
+      await axios.post(`${process.env.REACT_APP_API_URL}/entries/upload/${id}`, formData, {
+        headers: { Authorization: `Bearer ${user.token}` },
       });
-      onSubmit();
-      setTitle('');
-      setContent('');
-      setCategory('');
-    } catch (error) {
-      console.error('Error creating entry:', error);
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to upload file');
     }
   };
 
+  const handleDelete = async () => {
+    try {
+      await axios.delete(`${process.env.REACT_APP_API_URL}/entries/${id}`, {
+        headers: { Authorization: `Bearer ${user.token}` },
+      });
+      navigate('/');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete entry');
+    }
+  };
+
+  if (!entry) return <Typography>Loading...</Typography>;
+
   return (
-    <form onSubmit={handleSubmit}>
-      <TextField
-        label="Title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        fullWidth
-        margin="normal"
-      />
-      <FormControl fullWidth margin="normal">
-        <InputLabel>Category</InputLabel>
-        <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-          {categories.map(cat => (
-            <MenuItem key={cat._id} value={cat._id}>{cat.name}</MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-      <ReactQuill value={content} onChange={setContent} />
-      <Button type="submit" variant="contained" color="primary" style={{ marginTop: '20px' }}>
-        Create Entry
-      </Button>
-    </form>
+    <Container>
+      {editMode && user.role === 'admin' ? (
+        <EntryForm
+          initialData={entry}
+          editMode={true}
+          onSubmit={() => setEditMode(false)}
+        />
+      ) : (
+        <>
+          <Typography variant="h4">{entry.title}</Typography>
+          <Typography variant="subtitle1">Category: {entry.category.name}</Typography>
+          <div style={{ margin: '20px 0' }}>
+            {entry.subcategories.map((sub, index) => (
+              <span
+                key={index}
+                className="bubble"
+                onClick={() => sub.linkedEntry && navigate(`/entry/${sub.linkedEntry}`)}
+                style={{ cursor: sub.linkedEntry ? 'pointer' : 'default' }}
+              >
+                {sub.name}: {sub.value}
+              </span>
+            ))}
+          </div>
+          <div dangerouslySetInnerHTML={{ __html: entry.content }} />
+          {entry.attachments.length > 0 && (
+            <div>
+              <Typography variant="h6">Attachments:</Typography>
+              {entry.attachments.map((url, index) => (
+                <a key={index} href={url} target="_blank" rel="noopener noreferrer">
+                  Attachment {index + 1}
+                </a>
+              ))}
+            </div>
+          )}
+          {user.role === 'admin' && (
+            <>
+              <Button onClick={() => setEditMode(true)} variant="contained" color="primary">
+                Edit
+              </Button>
+              <Button onClick={handleDelete} variant="contained" color="secondary" style={{ marginLeft: '10px' }}>
+                Delete
+              </Button>
+            </>
+          )}
+          {(user.role === 'admin' || user.role === 'animator') && (
+            <div style={{ marginTop: '20px' }}>
+              <input type="file" onChange={handleUpload} />
+            </div>
+          )}
+        </>
+      )}
+    </Container>
   );
 };
 
-export default EntryForm;
+export default EntryView;
