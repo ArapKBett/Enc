@@ -1,0 +1,30 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+}
+.sidebar {
+  width: 250px;
+  background: #f4f4f4;
+  padding: 20px;
+  height: 100vh;
+  position: fixed;
+}
+.main-content {
+  margin-left: 270px;
+  padding: 20px;
+  width: calc(100% - 270px);
+}
+.bubble {
+  display: inline-block;
+  background: #e0f7fa;
+  border-radius: 15px;
+  padding: 10px 20px;
+  margin: 5px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.bubble:hover {
+  background: #b2ebf2;
+}
