@@ -1,54 +1,64 @@
-import React, { useEffect, useState } from 'react';
-import { List, ListItem, ListItemText } from '@material-ui/core';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { List, ListItem, ListItemText, Typography, Button } from '@mui/material';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
-import socket from '../socket';
+import io from 'socket.io-client';
+import { useParams } from 'react-router-dom';
 
 const EntryList = () => {
+  const { categoryId } = useParams();
   const [entries, setEntries] = useState([]);
-  const location = useLocation();
   const user = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
-    const fetchEntries = async () => {
-      const params = new URLSearchParams(location.search);
-      const category = params.get('category');
-      const url = category
-        ? `${process.env.REACT_APP_API_URL}/entries?category=${category}`
-        : `${process.env.REACT_APP_API_URL}/entries`;
-      const res = await axios.get(url, {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      setEntries(res.data);
-    };
-    fetchEntries();
-
-    socket.on('entryUpdate', (entry) => {
-      if (entry.deleted) {
-        setEntries((prev) => prev.filter((e) => e._id !== entry._id));
-      } else {
-        setEntries((prev) => {
-          const index = prev.findIndex((e) => e._id === entry._id);
-          if (index >= 0) {
-            return [...prev.slice(0, index), entry, ...prev.slice(index + 1)];
-          }
-          return [entry, ...prev];
-        });
-      }
+    const socket = io(process.env.REACT_APP_SOCKET_URL);
+    socket.on('entryUpdate', () => {
+      fetchEntries();
     });
 
-    return () => socket.off('entryUpdate');
-  }, [location.search, user.token]);
+    fetchEntries();
+    return () => socket.disconnect();
+  }, [categoryId]);
+
+  const fetchEntries = async () => {
+    try {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/entries${categoryId ? `?categoryId=${categoryId}` : ''}`, {
+        headers: { Authorization: `Bearer ${user?.token}` }
+      });
+      setEntries(response.data);
+    } catch (error) {
+      console.error('Error fetching entries:', error);
+    }
+  };
 
   return (
-    <List>
-      {entries.map((entry) => (
-        <ListItem key={entry._id} button component={Link} to={`/entry/${entry._id}`}>
-          <ListItemText primary={entry.title} secondary={entry.category.name} />
-        </ListItem>
-      ))}
-    </List>
+    <>
+      <Typography variant="h5" gutterBottom>Entries</Typography>
+      <List>
+        {entries.map(entry => (
+          <ListItem key={entry._id} component={Link} to={`/entry/${entry._id}`}>
+            <ListItemText primary={entry.title} secondary={entry.category.name} />
+            {user?.role === 'admin' && (
+              <Button variant="outlined" color="secondary" onClick={() => handleDelete(entry._id)}>
+                Delete
+              </Button>
+            )}
+          </ListItem>
+        ))}
+      </List>
+    </>
   );
+
+  const handleDelete = async (id) => {
+    try {
+      await axios.delete(`${process.env.REACT_APP_API_URL}/entries/${id}`, {
+        headers: { Authorization: `Bearer ${user.token}` }
+      });
+      fetchEntries();
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+    }
+  };
 };
 
 export default EntryList;
