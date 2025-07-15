@@ -11,7 +11,7 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: process.env.REACT_APP_API_URL || 'http://localhost:3000' },
+  cors: { origin: process.env.REACT_APP_API_URL || 'https://movency.onrender.com' },
 });
 
 app.use(cors());
