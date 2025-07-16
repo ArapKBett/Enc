@@ -1,50 +1,43 @@
 import React, { useState } from 'react';
-import { TextField, Button, Container, Typography } from '@mui/material'; // Changed to @mui/material
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 
-const Login = ({ setUser }) => {
+const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const navigate = useNavigate();
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${process.env.REACT_APP_API_URL}/auth/login`, { username, password });
-      const user = { username: res.data.username, token: res.data.token, role: res.data.role };
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
-      navigate('/');
+      const response = await axios.post('https://encyba.onrender.com/api/auth/login', {
+        username,
+        password,
+      });
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('role', response.data.role);
+      window.location.href = '/dashboard'; // Adjust redirect
     } catch (err) {
-      alert(err.response?.data?.error || 'Login failed');
+      setError(err.response?.data?.error || 'Login failed');
     }
   };
 
   return (
-    <Container maxWidth="sm">
-      <Typography variant="h4" gutterBottom>Login</Typography>
-      <form onSubmit={handleSubmit}>
-        <TextField
-          label="Username"
-          fullWidth
-          margin="normal"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <TextField
-          label="Password"
-          type="password"
-          fullWidth
-          margin="normal"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <Button type="submit" variant="contained" color="primary" fullWidth>
-          Login
-        </Button>
-      </form>
-    </Container>
+    <form onSubmit={handleLogin}>
+      <input
+        type="text"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Username"
+      />
+      <input
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Password"
+      />
+      <button type="submit">Login</button>
+      {error && <p>{error}</p>}
+    </form>
   );
 };
 
