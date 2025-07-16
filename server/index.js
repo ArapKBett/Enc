@@ -4,7 +4,7 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
-const User = require('./models/User'); // Matches case in models/User.js
+const User = require('./models/User');
 const authRoutes = require('./routes/auth');
 const entryRoutes = require('./routes/entries');
 const categoryRoutes = require('./routes/categories');
@@ -25,17 +25,6 @@ mongoose.connect(process.env.MONGO_URI, {
   useUnifiedTopology: true,
 }).then(() => {
   console.log('MongoDB connected');
-  // Reset admin user on startup
-  const setupAdmin = async () => {
-    try {
-      await User.deleteOne({ username: 'admin1' }); // Remove existing user to avoid duplicates
-      await User.create({ username: 'admin1', password: 'Admin123!', role: 'admin' });
-      console.log('Admin user reset: admin1 with password Admin123!');
-    } catch (err) {
-      console.error('Error resetting admin user:', err);
-    }
-  };
-  setupAdmin();
 }).catch(err => console.error('MongoDB connection error:', err));
 
 app.use('/api/auth', authRoutes);
